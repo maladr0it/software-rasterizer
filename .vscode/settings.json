@@ -12,7 +12,8 @@
 		"unordered_map": "c",
 		"utility": "c",
 		"vector": "c",
-		"scene.h": "c"
+		"scene.h": "c",
+		"__locale": "c"
 	},
 	"editor.tabSize": 4
 }

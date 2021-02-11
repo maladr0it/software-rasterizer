@@ -31,10 +31,18 @@ typedef struct tri
 
 typedef float mat4x4_t[4][4];
 
-Uint32 makeColor(Uint8 r, Uint8 g, Uint8 b)
+Uint32 createColor(Uint8 r, Uint8 g, Uint8 b)
 {
     return ((Uint32)r << 24) + ((Uint32)g << 16) + ((Uint32)b << 8) + 0xff;
 };
+
+Uint32 multiplyColor(Uint32 color, float factor)
+{
+    Uint8 r = (Uint8)(color >> 24) * factor;
+    Uint8 g = (Uint8)(color >> 16) * factor;
+    Uint8 b = (Uint8)(color >> 8) * factor;
+    return createColor(r, g, b);
+}
 
 float fMin(float a, float b)
 {
@@ -98,6 +106,60 @@ float fMax3(float a, float b, float c)
     }
 }
 
+v3_t addv3(v3_t a, v3_t b)
+{
+    v3_t result;
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
+    result.z = a.y + b.y;
+    return result;
+}
+
+v3_t subv3(v3_t a, v3_t b)
+{
+    v3_t result;
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+    result.z = a.z - b.z;
+    return result;
+}
+
+v3_t mulv3(v3_t a, float factor)
+{
+    v3_t result;
+    result.x = a.x * factor;
+    result.y = a.y * factor;
+    result.z = a.z * factor;
+    return result;
+};
+
+v3_t normv3(v3_t a)
+{
+    float magnitude = sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+    return mulv3(a, 1 / magnitude);
+}
+
+v3_t cross(v3_t a, v3_t b)
+{
+    v3_t result;
+    result.x = a.y * b.z - a.z * b.y;
+    result.y = a.x * b.z - a.z * b.x;
+    result.z = a.x * b.y - a.y * b.x;
+    return result;
+}
+
+float dotv3(v3_t a, v3_t b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+v3_t getTriNormal(tri_t tri)
+{
+    v3_t v01 = subv3(tri.p[1], tri.p[0]);
+    v3_t v02 = subv3(tri.p[2], tri.p[0]);
+    return normv3(cross(v01, v02));
+}
+
 void createMatProj(mat4x4_t out)
 {
     float a = SCREEN_WIDTH / SCREEN_HEIGHT;
@@ -134,11 +196,34 @@ void createMatRotX(mat4x4_t out, float theta)
 
     out[1][0] = 0;
     out[1][1] = cosf(theta);
-    out[1][2] = sinf(theta);
+    out[1][2] = -sinf(theta);
     out[1][3] = 0;
 
     out[2][0] = 0;
-    out[2][1] = -sinf(theta);
+    out[2][1] = sinf(theta);
+    out[2][2] = cosf(theta);
+    out[2][3] = 0;
+
+    out[3][0] = 0;
+    out[3][1] = 0;
+    out[3][2] = 0;
+    out[3][3] = 1;
+}
+
+void createMatRotY(mat4x4_t out, float theta)
+{
+    out[0][0] = cosf(theta);
+    out[0][1] = 0;
+    out[0][2] = sinf(theta);
+    out[0][3] = 0;
+
+    out[1][0] = 0;
+    out[1][1] = 1;
+    out[1][2] = 0;
+    out[1][3] = 0;
+
+    out[2][0] = -sinf(theta);
+    out[2][1] = 0;
     out[2][2] = cosf(theta);
     out[2][3] = 0;
 
@@ -151,11 +236,11 @@ void createMatRotX(mat4x4_t out, float theta)
 void createMatRotZ(mat4x4_t out, float theta)
 {
     out[0][0] = cosf(theta);
-    out[0][1] = sinf(theta);
+    out[0][1] = -sinf(theta);
     out[0][2] = 0;
     out[0][3] = 0;
 
-    out[1][0] = -sinf(theta);
+    out[1][0] = sinf(theta);
     out[1][1] = cosf(theta);
     out[1][2] = 0;
     out[1][3] = 0;
@@ -238,33 +323,46 @@ void transformVector(v3_t *out, v3_t in, mat4x4_t mat)
     }
 }
 
-void drawTri(videoBuffer_t *buffer, tri_t tri, Uint32 color, float rotX)
+void drawTri(videoBuffer_t *buffer, tri_t tri, Uint32 color, float rotX, float rotY, float rotZ)
 {
     tri_t rotXTri;
+    tri_t rotYTri;
     tri_t rotZTri;
     tri_t transTri;
     tri_t projTri;
 
     mat4x4_t matRotX;
+    mat4x4_t matRotY;
     mat4x4_t matRotZ;
     mat4x4_t matTrans;
 
-    createMatRotX(matRotX, 0);
-    createMatRotZ(matRotZ, rotX);
-    v3_t d = {.x = 0, .y = 0, .z = 100};
+    createMatRotX(matRotX, rotX);
+    createMatRotY(matRotY, rotY);
+    createMatRotZ(matRotZ, rotZ);
+    v3_t d = {.x = 0, .y = 0, .z = 50};
     createMatTrans(matTrans, d);
 
     transformVector(&(rotXTri.p[0]), tri.p[0], matRotX);
     transformVector(&(rotXTri.p[1]), tri.p[1], matRotX);
     transformVector(&(rotXTri.p[2]), tri.p[2], matRotX);
 
-    transformVector(&(rotZTri.p[0]), rotXTri.p[0], matRotZ);
-    transformVector(&(rotZTri.p[1]), rotXTri.p[1], matRotZ);
-    transformVector(&(rotZTri.p[2]), rotXTri.p[2], matRotZ);
+    transformVector(&(rotYTri.p[0]), rotXTri.p[0], matRotY);
+    transformVector(&(rotYTri.p[1]), rotXTri.p[1], matRotY);
+    transformVector(&(rotYTri.p[2]), rotXTri.p[2], matRotY);
+
+    transformVector(&(rotZTri.p[0]), rotYTri.p[0], matRotZ);
+    transformVector(&(rotZTri.p[1]), rotYTri.p[1], matRotZ);
+    transformVector(&(rotZTri.p[2]), rotYTri.p[2], matRotZ);
 
     transformVector(&(transTri.p[0]), rotZTri.p[0], matTrans);
     transformVector(&(transTri.p[1]), rotZTri.p[1], matTrans);
     transformVector(&(transTri.p[2]), rotZTri.p[2], matTrans);
+
+    v3_t normal = getTriNormal(transTri);
+    v3_t lightDir = {1.0f, 1.0f, 1.0f};
+    lightDir = normv3(lightDir);
+
+    float dp = fMax(dotv3(normal, lightDir), 0.2);
 
     transformVector(&(projTri.p[0]), transTri.p[0], MAT_PROJ);
     transformVector(&(projTri.p[1]), transTri.p[1], MAT_PROJ);
@@ -300,7 +398,8 @@ void drawTri(videoBuffer_t *buffer, tri_t tri, Uint32 color, float rotX)
 
             if (w0 >= 0 && w1 >= 0 && w2 >= 0)
             {
-                putPixel(buffer, x, y, color);
+                Uint32 shaded = multiplyColor(color, dp);
+                putPixel(buffer, x, y, shaded);
             }
         }
     }
@@ -337,16 +436,41 @@ int main(void)
 
     createMatProj(MAT_PROJ);
 
-    Uint32 red = makeColor(0xff, 0x00, 0x00);
-    Uint32 green = makeColor(0x00, 0xff, 0x00);
+    Uint32 red = createColor(0xff, 0x00, 0x00);
+    Uint32 green = createColor(0x00, 0xff, 0x00);
+    Uint32 blue = createColor(0x00, 0x00, 0xff);
 
-    tri_t triA = {
-        .p = {
-            {-10.0f, 0.0f, 0.0f},
-            {10.0f, 2.0f, 0.0f},
-            {0.0f, 10.0f, 0.0f}}};
+    v3_t vertA = {-10.0f, -10.0f, -10.0f};
+    v3_t vertB = {+10.0f, -10.0f, -10.0f};
+    v3_t vertC = {+10.0f, +10.0f, -10.0f};
+    v3_t vertD = {-10.0f, +10.0f, -10.0f};
+    v3_t vertE = {-10.0f, -10.0f, +10.0f};
+    v3_t vertF = {+10.0f, -10.0f, +10.0f};
+    v3_t vertG = {+10.0f, +10.0f, +10.0f};
+    v3_t vertH = {-10.0f, +10.0f, +10.0f};
+
+    // south
+    tri_t triA = {.p = {vertA, vertC, vertD}};
+    tri_t triB = {.p = {vertA, vertB, vertC}};
+    // east
+    tri_t triC = {.p = {vertB, vertG, vertC}};
+    tri_t triD = {.p = {vertB, vertF, vertG}};
+    // north
+    tri_t triE = {.p = {vertF, vertH, vertG}};
+    tri_t triF = {.p = {vertF, vertE, vertH}};
+    // west
+    tri_t triG = {.p = {vertE, vertD, vertH}};
+    tri_t triH = {.p = {vertE, vertA, vertD}};
+    // top
+    tri_t triI = {.p = {vertD, vertG, vertH}};
+    tri_t triJ = {.p = {vertD, vertC, vertG}};
+    // bottom
+    tri_t triK = {.p = {vertE, vertB, vertA}};
+    tri_t triL = {.p = {vertE, vertF, vertB}};
 
     float rotX = 0;
+    float rotY = 0;
+    float rotZ = 0;
 
     while (running)
     {
@@ -360,10 +484,29 @@ int main(void)
         }
 
         rotX += 0.01;
+        rotY += 0.02;
 
         // render
-        drawRect(&screen, 0, 0, screen.w, screen.h, makeColor(0x00, 0x00, 0x00));
-        drawTri(&screen, triA, green, rotX);
+        drawRect(&screen, 0, 0, screen.w, screen.h, createColor(0x00, 0x00, 0x00));
+
+        drawTri(&screen, triA, red, rotX, rotY, rotZ);
+        drawTri(&screen, triB, red, rotX, rotY, rotZ);
+
+        drawTri(&screen, triC, green, rotX, rotY, rotZ);
+        drawTri(&screen, triD, green, rotX, rotY, rotZ);
+
+        drawTri(&screen, triE, red, rotX, rotY, rotZ);
+        drawTri(&screen, triF, red, rotX, rotY, rotZ);
+
+        drawTri(&screen, triG, green, rotX, rotY, rotZ);
+        drawTri(&screen, triH, green, rotX, rotY, rotZ);
+
+        drawTri(&screen, triI, blue, rotX, rotY, rotZ);
+        drawTri(&screen, triJ, blue, rotX, rotY, rotZ);
+
+        drawTri(&screen, triK, blue, rotX, rotY, rotZ);
+        drawTri(&screen, triL, blue, rotX, rotY, rotZ);
+
         SDL_UpdateTexture(screenTexture, NULL, screen.pixels, 4 * screen.w);
         SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
         SDL_RenderPresent(renderer);
