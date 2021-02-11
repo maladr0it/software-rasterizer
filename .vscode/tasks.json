@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "C/C++: make file",
+            "command": "rm -rf build && mkdir build && clang -g ${fileDirname}/*.c -o build/main -F /Library/Frameworks -framework SDL2 -framework SDL2_ttf",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build"
+        },
+        {
+            "type": "shell",
+            "label": "C/C++: build & run",
+            "command": "rm -rf build && mkdir build && clang -g ${fileDirname}/*.c -o build/main -F /Library/Frameworks -framework SDL2 -framework SDL2_ttf && ./build/main",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
