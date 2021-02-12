@@ -1,6 +1,8 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 #include <math.h>
+#include "main.h"
+#include "mesh.h"
 
 const int SCREEN_WIDTH = 512;
 const int SCREEN_HEIGHT = 512;
@@ -16,18 +18,6 @@ typedef struct videoBuffer
     int h;
     Uint32 *pixels;
 } videoBuffer_t;
-
-typedef struct v3
-{
-    float x;
-    float y;
-    float z;
-} v3_t;
-
-typedef struct tri
-{
-    v3_t p[3];
-} tri_t;
 
 typedef float mat4x4_t[4][4];
 
@@ -157,7 +147,7 @@ v3_t getTriNormal(tri_t tri)
 {
     v3_t v01 = subv3(tri.p[1], tri.p[0]);
     v3_t v02 = subv3(tri.p[2], tri.p[0]);
-    return normv3(cross(v02, v01));
+    return normv3(cross(v01, v02));
 }
 
 void createMatProj(mat4x4_t out)
@@ -357,7 +347,7 @@ void drawTri(videoBuffer_t *buffer, tri_t tri, Uint32 color, float rotX, float r
     transformVector(&(transTri.p[2]), rotZTri.p[2], matTrans);
 
     v3_t normal = getTriNormal(transTri);
-    v3_t lightDir = {0, 0, 1};
+    v3_t lightDir = {1, 0, 0};
     lightDir = normv3(lightDir);
     float lightStrength = fMax(-1 * dotv3(normal, lightDir), 0.0f);
     float globalLight = 0.2f;
@@ -395,9 +385,9 @@ void drawTri(videoBuffer_t *buffer, tri_t tri, Uint32 color, float rotX, float r
         for (int x = minX; x < maxX; x++)
         {
             v3_t p = {x, y, 0};
-            float w0 = orient2d(projTri.p[0], p, projTri.p[1]);
-            float w1 = orient2d(projTri.p[1], p, projTri.p[2]);
-            float w2 = orient2d(projTri.p[2], p, projTri.p[0]);
+            float w0 = orient2d(projTri.p[0], projTri.p[1], p);
+            float w1 = orient2d(projTri.p[1], projTri.p[2], p);
+            float w2 = orient2d(projTri.p[2], projTri.p[0], p);
 
             if (w0 >= 0 && w1 >= 0 && w2 >= 0)
             {
@@ -436,6 +426,8 @@ int main(void)
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     bool running = true;
+
+    mesh_t mesh = loadMesh("assets/cube.obj");
 
     createMatProj(MAT_PROJ);
 
@@ -487,32 +479,37 @@ int main(void)
             }
         }
 
-        // rotX += 0.005;
+        rotX += 0.005;
         // rotY += 0.005;
-        rotZ += 0.005;
+        // rotZ += 0.005;
 
         // rotX += 0.1;
 
         // render
         drawRect(&screen, 0, 0, screen.w, screen.h, createColor(0x00, 0x00, 0x00));
 
-        drawTri(&screen, triA, red, rotX, rotY, rotZ);
-        drawTri(&screen, triB, red, rotX, rotY, rotZ);
+        for (int i = 0; i < mesh.numTris; i++)
+        {
+            drawTri(&screen, mesh.tris[i], blue, rotX, rotY, rotZ);
+        }
 
-        drawTri(&screen, triC, green, rotX, rotY, rotZ);
-        drawTri(&screen, triD, green, rotX, rotY, rotZ);
+        // drawTri(&screen, triA, red, rotX, rotY, rotZ);
+        // drawTri(&screen, triB, red, rotX, rotY, rotZ);
 
-        drawTri(&screen, triE, red, rotX, rotY, rotZ);
-        drawTri(&screen, triF, red, rotX, rotY, rotZ);
+        // drawTri(&screen, triC, green, rotX, rotY, rotZ);
+        // drawTri(&screen, triD, green, rotX, rotY, rotZ);
 
-        drawTri(&screen, triG, green, rotX, rotY, rotZ);
-        drawTri(&screen, triH, green, rotX, rotY, rotZ);
+        // drawTri(&screen, triE, red, rotX, rotY, rotZ);
+        // drawTri(&screen, triF, red, rotX, rotY, rotZ);
 
-        drawTri(&screen, triI, blue, rotX, rotY, rotZ);
-        drawTri(&screen, triJ, blue, rotX, rotY, rotZ);
+        // drawTri(&screen, triG, green, rotX, rotY, rotZ);
+        // drawTri(&screen, triH, green, rotX, rotY, rotZ);
 
-        drawTri(&screen, triK, blue, rotX, rotY, rotZ);
-        drawTri(&screen, triL, blue, rotX, rotY, rotZ);
+        // drawTri(&screen, triI, blue, rotX, rotY, rotZ);
+        // drawTri(&screen, triJ, blue, rotX, rotY, rotZ);
+
+        // drawTri(&screen, triK, blue, rotX, rotY, rotZ);
+        // drawTri(&screen, triL, blue, rotX, rotY, rotZ);
 
         SDL_UpdateTexture(screenTexture, NULL, screen.pixels, 4 * screen.w);
         SDL_RenderCopy(renderer, screenTexture, NULL, NULL);

@@ -13,7 +13,9 @@
 		"utility": "c",
 		"vector": "c",
 		"scene.h": "c",
-		"__locale": "c"
+		"__locale": "c",
+		"main.h": "c",
+		"ios": "c"
 	},
 	"editor.tabSize": 4
 }
