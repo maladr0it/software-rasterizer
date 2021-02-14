@@ -8,6 +8,6 @@ typedef struct tri
     v3_t p[3];
 } tri_t;
 
-v3_t triGetNormal(tri_t tri);
+v3_t tri_getNormal(tri_t tri);
 
 #endif

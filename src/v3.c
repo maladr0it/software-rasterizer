@@ -1,7 +1,7 @@
 #include <math.h>
 #include "v3.h"
 
-v3_t v3Add(v3_t a, v3_t b)
+v3_t v3_add(v3_t a, v3_t b)
 {
     v3_t result;
     result.x = a.x + b.x;
@@ -10,7 +10,7 @@ v3_t v3Add(v3_t a, v3_t b)
     return result;
 }
 
-v3_t v3Sub(v3_t a, v3_t b)
+v3_t v3_sub(v3_t a, v3_t b)
 {
     v3_t result;
     result.x = a.x - b.x;
@@ -19,22 +19,25 @@ v3_t v3Sub(v3_t a, v3_t b)
     return result;
 }
 
-v3_t v3Mul(v3_t a, float factor)
+v3_t v3_mul(v3_t a, float b)
 {
     v3_t result;
-    result.x = a.x * factor;
-    result.y = a.y * factor;
-    result.z = a.z * factor;
+    result.x = a.x * b;
+    result.y = a.y * b;
+    result.z = a.z * b;
     return result;
 };
 
-v3_t v3Normalize(v3_t a)
+v3_t v3_div(v3_t a, float b)
 {
-    float magnitude = sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
-    return v3Mul(a, 1 / magnitude);
+    v3_t result;
+    result.x = a.x / b;
+    result.y = a.y / b;
+    result.z = a.z / b;
+    return result;
 }
 
-v3_t v3Cross(v3_t a, v3_t b)
+v3_t v3_cross(v3_t a, v3_t b)
 {
     v3_t result;
     result.x = a.y * b.z - a.z * b.y;
@@ -43,7 +46,17 @@ v3_t v3Cross(v3_t a, v3_t b)
     return result;
 }
 
-float v3Dot(v3_t a, v3_t b)
+float v3_dot(v3_t a, v3_t b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+float v3_len(v3_t a)
+{
+    return sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+v3_t v3_normalize(v3_t a)
+{
+    return v3_div(a, v3_len(a));
 }

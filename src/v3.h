@@ -8,15 +8,20 @@ typedef struct v3
     float z;
 } v3_t;
 
-v3_t v3Add(v3_t a, v3_t b);
+v3_t v3_add(v3_t a, v3_t b);
 
-v3_t v3Sub(v3_t a, v3_t b);
+v3_t v3_sub(v3_t a, v3_t b);
 
-v3_t v3Mul(v3_t a, float factor);
+v3_t v3_mul(v3_t a, float factor);
 
-v3_t v3Normalize(v3_t a);
+v3_t v3_div(v3_t a, float b);
 
-v3_t v3Cross(v3_t a, v3_t b);
+v3_t v3_cross(v3_t a, v3_t b);
 
-float v3Dot(v3_t a, v3_t b);
+float v3_dot(v3_t a, v3_t b);
+
+float v3_len(v3_t a);
+
+v3_t v3_normalize(v3_t a);
+
 #endif

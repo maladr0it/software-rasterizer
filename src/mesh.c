@@ -8,7 +8,7 @@ const int MAX_TOKEN_LEN = 16;
 const int MAX_VERTS = 64;
 const int MAX_TRIS = 128;
 
-mesh_t loadMesh(char *path)
+mesh_t mesh_load(char *path)
 {
     FILE *file = fopen(path, "r");
     if (file == NULL)
@@ -65,7 +65,7 @@ mesh_t loadMesh(char *path)
     return mesh;
 }
 
-void unloadMesh(mesh_t *mesh)
+void mesh_unload(mesh_t *mesh)
 {
     free(mesh->tris);
 }

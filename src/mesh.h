@@ -9,6 +9,8 @@ typedef struct mesh
     tri_t *tris;
 } mesh_t;
 
-mesh_t loadMesh(char *path);
+mesh_t mesh_load(char *path);
+
+void mesh_unload(mesh_t *mesh);
 
 #endif
