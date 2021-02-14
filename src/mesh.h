@@ -1,7 +1,7 @@
 #ifndef MESH_H
 #define MESH_H
 
-#include "main.h"
+#include "tri.h"
 
 typedef struct mesh
 {

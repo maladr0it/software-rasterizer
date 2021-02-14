@@ -42,6 +42,7 @@ mesh_t loadMesh(char *path)
             verts[numVerts] = vert;
             numVerts++;
             break;
+
         case 'f':
             p = line + 1;
             tri_t tri;

@@ -15,7 +15,8 @@
 		"scene.h": "c",
 		"__locale": "c",
 		"main.h": "c",
-		"ios": "c"
+		"ios": "c",
+		"stdlib.h": "c"
 	},
 	"editor.tabSize": 4
 }
