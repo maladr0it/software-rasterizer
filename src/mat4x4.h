@@ -8,6 +8,10 @@ typedef struct mat4x4
     float m[4][4];
 } mat4x4_t;
 
+mat4x4_t mat4x4_createIdentity();
+
+mat4x4_t mat4x4_mul(mat4x4_t a, mat4x4_t b);
+
 mat4x4_t mat4x4_createProj(float aspectRatio, float fov, float zNear, float zFar);
 
 mat4x4_t mat4x4_createRotX(float theta);
