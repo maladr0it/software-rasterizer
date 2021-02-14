@@ -12,7 +12,7 @@ v3_t v3_add(v3_t a, v3_t b);
 
 v3_t v3_sub(v3_t a, v3_t b);
 
-v3_t v3_mul(v3_t a, float factor);
+v3_t v3_mul(v3_t a, float b);
 
 v3_t v3_div(v3_t a, float b);
 

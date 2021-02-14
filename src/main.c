@@ -74,30 +74,35 @@ float orient2d(v3_t a, v3_t b, v3_t c)
     return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 
-void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, Uint32 color, mat4x4_t transform)
+void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4x4_t transform, mat4x4_t view)
 {
-    tri_t transformedTri;
+    Uint32 color = WHITE;
+
+    tri_t transformedTri, projTri, viewedTri;
+
     transformedTri.p[0] = mat4x4_transformV3(tri.p[0], transform);
     transformedTri.p[1] = mat4x4_transformV3(tri.p[1], transform);
     transformedTri.p[2] = mat4x4_transformV3(tri.p[2], transform);
 
     // lighting
     v3_t normal = tri_getNormal(transformedTri);
-    v3_t lightDir = {1, 0, 0};
+    v3_t lightDir = {0, -1, 0};
     lightDir = v3_normalize(lightDir);
     float lightStrength = fMax(-1 * v3_dot(normal, lightDir), 0.0f);
     float globalLight = 0.2f;
     lightStrength = globalLight + lightStrength * (1.0f - globalLight);
 
-    // projection
-    tri_t projTri;
-    projTri.p[0] = mat4x4_transformV3(transformedTri.p[0], MAT_PROJ);
-    projTri.p[1] = mat4x4_transformV3(transformedTri.p[1], MAT_PROJ);
-    projTri.p[2] = mat4x4_transformV3(transformedTri.p[2], MAT_PROJ);
+    // world space -> view space
+    viewedTri.p[0] = mat4x4_transformV3(transformedTri.p[0], view);
+    viewedTri.p[1] = mat4x4_transformV3(transformedTri.p[1], view);
+    viewedTri.p[2] = mat4x4_transformV3(transformedTri.p[2], view);
 
-    projTri.p[0].y *= -1;
-    projTri.p[1].y *= -1;
-    projTri.p[2].y *= -1;
+    // viewedTri = tr1ansformedTri;
+
+    // view space -> screen space
+    projTri.p[0] = mat4x4_transformV3(viewedTri.p[0], MAT_PROJ);
+    projTri.p[1] = mat4x4_transformV3(viewedTri.p[1], MAT_PROJ);
+    projTri.p[2] = mat4x4_transformV3(viewedTri.p[2], MAT_PROJ);
 
     projTri.p[0].x += 1.0f;
     projTri.p[0].y += 1.0f;
@@ -118,7 +123,7 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, Uint32 color,
     float minY = fMax(fMin3(projTri.p[0].y, projTri.p[1].y, projTri.p[2].y), 0);
     float maxY = fMin(fMax3(projTri.p[0].y, projTri.p[1].y, projTri.p[2].y), buffer->h);
 
-    float areax2 = orient2d(projTri.p[0], projTri.p[1], projTri.p[2]);
+    float areax2 = orient2d(projTri.p[2], projTri.p[1], projTri.p[0]);
 
     if (areax2 < 0)
     {
@@ -130,8 +135,10 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, Uint32 color,
         for (int x = minX; x < maxX; x++)
         {
             v3_t p = {x, y, 0};
-            float w0 = orient2d(projTri.p[0], projTri.p[1], p);
-            float w1 = orient2d(projTri.p[1], projTri.p[2], p);
+            // float w0 = orient2d(projTri.p[0], projTri.p[1], p);
+            // float w1 = orient2d(projTri.p[1], projTri.p[2], p);
+            float w0 = orient2d(projTri.p[0], p, projTri.p[1]);
+            float w1 = orient2d(projTri.p[1], p, projTri.p[2]);
             float w2 = areax2 - w0 - w1;
 
             if (w0 < 0 || w1 < 0 || w2 < 0)
@@ -161,7 +168,7 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, Uint32 color,
     }
 }
 
-void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans)
+void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans, mat4x4_t matView)
 {
     mat4x4_t matWorld = mat4x4_createIdentity();
     matWorld = mat4x4_mul(matWorld, mat4x4_createRotX(rot.x));
@@ -169,9 +176,11 @@ void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, 
     matWorld = mat4x4_mul(matWorld, mat4x4_createRotZ(rot.z));
     matWorld = mat4x4_mul(matWorld, mat4x4_createTranslate(trans));
 
+    v3_t up = {0, 1, 0};
+
     for (int i = 0; i < mesh.numTris; i++)
     {
-        drawTri(buffer, depthBuffer, mesh.tris[i], WHITE, matWorld);
+        drawTri(buffer, depthBuffer, mesh.tris[i], matWorld, matView);
     }
 }
 
@@ -207,14 +216,17 @@ int main(void)
 
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
 
-    mesh_t mesh = mesh_load("assets/teapot.obj");
-
-    bool running = true;
+    mesh_t mesh = mesh_load("assets/axis2.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
     RED = createColor(0xff, 0x00, 0x00);
     GREEN = createColor(0x00, 0xff, 0x00);
     BLUE = createColor(0x00, 0x00, 0xff);
+
+    bool running = true;
+    v3_t cameraUp = {0, 1, 0};
+    v3_t cameraPos = {0, 0, 0};
+    v3_t cameraDir = {0, 0, 1};
 
     float rotX = 0;
     float rotY = 0;
@@ -235,9 +247,9 @@ int main(void)
 
         SDL_GetMouseState(&MOUSE_X, &MOUSE_Y);
 
-        rotX += 0.002;
-        rotY += 0.010;
-        // rotZ += 0.005;
+        // rotX += 0.01;
+        // rotY += 0.01;
+        // rotZ += 0.01;
 
         drawRect(&screen, 0, 0, screen.w, screen.h, createColor(0x00, 0x00, 0x00));
 
@@ -247,9 +259,13 @@ int main(void)
             depthBuffer[i] = 1;
         }
 
+        v3_t cameraTarget = v3_add(cameraPos, cameraDir);
+        mat4x4_t matCamera = mat4x4_createPointAt(cameraPos, cameraTarget, cameraUp);
+        mat4x4_t matView = mat4x4_createLookAt(matCamera);
+
         v3_t rot = {rotX, rotY, rotZ};
-        v3_t trans = {0, 0, 10};
-        drawMesh(&screen, depthBuffer, mesh, rot, trans);
+        v3_t trans = {0, 0, 30};
+        drawMesh(&screen, depthBuffer, mesh, rot, trans, matView);
 
         SDL_UpdateTexture(screenTexture, NULL, screen.pixels, BYTES_PER_PX * screen.w);
         SDL_RenderCopy(renderer, screenTexture, NULL, NULL);

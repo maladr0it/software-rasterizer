@@ -22,6 +22,10 @@ mat4x4_t mat4x4_createRotZ(float theta);
 
 mat4x4_t mat4x4_createTranslate(v3_t d);
 
+mat4x4_t mat4x4_createPointAt(v3_t pos, v3_t target, v3_t up);
+
+mat4x4_t mat4x4_createLookAt(mat4x4_t pointAt);
+
 v3_t mat4x4_transformV3(v3_t in, mat4x4_t mat);
 
 #endif

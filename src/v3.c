@@ -6,7 +6,7 @@ v3_t v3_add(v3_t a, v3_t b)
     v3_t result;
     result.x = a.x + b.x;
     result.y = a.y + b.y;
-    result.z = a.y + b.y;
+    result.z = a.z + b.z;
     return result;
 }
 
