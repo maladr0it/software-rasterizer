@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include "v3.h"
-#include "mat4x4.h"
+#include "mat4.h"
 #include "tri.h"
 #include "mesh.h"
 #include "utils.h"
@@ -15,9 +15,11 @@ const float FOV = 60.0f * M_PI / 180.0f;
 const float Z_FAR = 100.0f;
 const float Z_NEAR = 0.1f;
 
+const Uint8 *keyboardState;
+
 #define DEBUG 0
 
-mat4x4_t MAT_PROJ;
+mat4_t MAT_PROJ;
 
 int MOUSE_X;
 int MOUSE_Y;
@@ -74,35 +76,35 @@ float orient2d(v3_t a, v3_t b, v3_t c)
     return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 
-void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4x4_t transform, mat4x4_t view)
+void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transform, mat4_t view)
 {
     Uint32 color = WHITE;
 
     tri_t transformedTri, projTri, viewedTri;
 
-    transformedTri.p[0] = mat4x4_transformV3(tri.p[0], transform);
-    transformedTri.p[1] = mat4x4_transformV3(tri.p[1], transform);
-    transformedTri.p[2] = mat4x4_transformV3(tri.p[2], transform);
+    transformedTri.p[0] = mat4_transformV3(tri.p[0], transform);
+    transformedTri.p[1] = mat4_transformV3(tri.p[1], transform);
+    transformedTri.p[2] = mat4_transformV3(tri.p[2], transform);
 
     // lighting
     v3_t normal = tri_getNormal(transformedTri);
-    v3_t lightDir = {0, -1, 0};
+    v3_t lightDir = {1, 0, 0};
     lightDir = v3_normalize(lightDir);
     float lightStrength = fMax(-1 * v3_dot(normal, lightDir), 0.0f);
     float globalLight = 0.2f;
     lightStrength = globalLight + lightStrength * (1.0f - globalLight);
 
     // world space -> view space
-    viewedTri.p[0] = mat4x4_transformV3(transformedTri.p[0], view);
-    viewedTri.p[1] = mat4x4_transformV3(transformedTri.p[1], view);
-    viewedTri.p[2] = mat4x4_transformV3(transformedTri.p[2], view);
+    viewedTri.p[0] = mat4_transformV3(transformedTri.p[0], view);
+    viewedTri.p[1] = mat4_transformV3(transformedTri.p[1], view);
+    viewedTri.p[2] = mat4_transformV3(transformedTri.p[2], view);
 
-    // viewedTri = tr1ansformedTri;
+    // viewedTri = transformedTri;
 
     // view space -> screen space
-    projTri.p[0] = mat4x4_transformV3(viewedTri.p[0], MAT_PROJ);
-    projTri.p[1] = mat4x4_transformV3(viewedTri.p[1], MAT_PROJ);
-    projTri.p[2] = mat4x4_transformV3(viewedTri.p[2], MAT_PROJ);
+    projTri.p[0] = mat4_transformV3(viewedTri.p[0], MAT_PROJ);
+    projTri.p[1] = mat4_transformV3(viewedTri.p[1], MAT_PROJ);
+    projTri.p[2] = mat4_transformV3(viewedTri.p[2], MAT_PROJ);
 
     projTri.p[0].x += 1.0f;
     projTri.p[0].y += 1.0f;
@@ -135,8 +137,6 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4x4_t tran
         for (int x = minX; x < maxX; x++)
         {
             v3_t p = {x, y, 0};
-            // float w0 = orient2d(projTri.p[0], projTri.p[1], p);
-            // float w1 = orient2d(projTri.p[1], projTri.p[2], p);
             float w0 = orient2d(projTri.p[0], p, projTri.p[1]);
             float w1 = orient2d(projTri.p[1], p, projTri.p[2]);
             float w2 = areax2 - w0 - w1;
@@ -168,13 +168,13 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4x4_t tran
     }
 }
 
-void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans, mat4x4_t matView)
+void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans, mat4_t matView)
 {
-    mat4x4_t matWorld = mat4x4_createIdentity();
-    matWorld = mat4x4_mul(matWorld, mat4x4_createRotX(rot.x));
-    matWorld = mat4x4_mul(matWorld, mat4x4_createRotY(rot.y));
-    matWorld = mat4x4_mul(matWorld, mat4x4_createRotZ(rot.z));
-    matWorld = mat4x4_mul(matWorld, mat4x4_createTranslate(trans));
+    mat4_t matWorld = mat4_createIdentity();
+    matWorld = mat4_mul(matWorld, mat4_createRotX(rot.x));
+    matWorld = mat4_mul(matWorld, mat4_createRotY(rot.y));
+    matWorld = mat4_mul(matWorld, mat4_createRotZ(rot.z));
+    matWorld = mat4_mul(matWorld, mat4_createTranslate(trans));
 
     v3_t up = {0, 1, 0};
 
@@ -212,11 +212,11 @@ int main(void)
 
     float *depthBuffer = malloc(sizeof(float) * screen.w * screen.h);
 
-    MAT_PROJ = mat4x4_createProj(screen.w / screen.h, FOV, Z_NEAR, Z_FAR);
+    MAT_PROJ = mat4_createProj((float)screen.w / (float)screen.h, FOV, Z_NEAR, Z_FAR);
 
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
 
-    mesh_t mesh = mesh_load("assets/axis2.obj");
+    mesh_t mesh = mesh_load("assets/teapot2.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
     RED = createColor(0xff, 0x00, 0x00);
@@ -224,7 +224,7 @@ int main(void)
     BLUE = createColor(0x00, 0x00, 0xff);
 
     bool running = true;
-    v3_t cameraUp = {0, 1, 0};
+    v3_t cameraUp = {0, -1, 0};
     v3_t cameraPos = {0, 0, 0};
     v3_t cameraDir = {0, 0, 1};
 
@@ -247,10 +247,38 @@ int main(void)
 
         SDL_GetMouseState(&MOUSE_X, &MOUSE_Y);
 
+        keyboardState = SDL_GetKeyboardState(NULL);
+
+        if (keyboardState[SDL_SCANCODE_W])
+        {
+            cameraPos.y -= 0.5f;
+        }
+        if (keyboardState[SDL_SCANCODE_S])
+        {
+            cameraPos.y += 0.5f;
+        }
+        if (keyboardState[SDL_SCANCODE_A])
+        {
+            cameraPos.x -= 0.5f;
+        }
+        if (keyboardState[SDL_SCANCODE_D])
+        {
+            cameraPos.x += 0.5f;
+        }
+        if (keyboardState[SDL_SCANCODE_UP])
+        {
+            cameraPos.z += 0.5f;
+        }
+        if (keyboardState[SDL_SCANCODE_DOWN])
+        {
+            cameraPos.z -= 0.5f;
+        }
+
         // rotX += 0.01;
         // rotY += 0.01;
         // rotZ += 0.01;
 
+        // render
         drawRect(&screen, 0, 0, screen.w, screen.h, createColor(0x00, 0x00, 0x00));
 
         // reset depth buffer
@@ -260,8 +288,8 @@ int main(void)
         }
 
         v3_t cameraTarget = v3_add(cameraPos, cameraDir);
-        mat4x4_t matCamera = mat4x4_createPointAt(cameraPos, cameraTarget, cameraUp);
-        mat4x4_t matView = mat4x4_createLookAt(matCamera);
+        mat4_t matCamera = mat4_createPointAt(cameraPos, cameraTarget, cameraUp);
+        mat4_t matView = mat4_createLookAt(matCamera);
 
         v3_t rot = {rotX, rotY, rotZ};
         v3_t trans = {0, 0, 30};
