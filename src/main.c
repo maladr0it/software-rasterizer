@@ -224,13 +224,19 @@ int main(void)
     BLUE = createColor(0x00, 0x00, 0xff);
 
     bool running = true;
-    v3_t cameraUp = {0, -1, 0};
+    float cameraYaw = 0.0f;
     v3_t cameraPos = {0, 0, 0};
     v3_t cameraDir = {0, 0, 1};
+
+    // m4_t transformRotY = m4_createRotY(cameraYaw);
+
+    // cameraDir = v3_normalize(cameraDir);
 
     float rotX = 0;
     float rotY = 0;
     float rotZ = 0;
+
+    float speed = 0.5f;
 
     while (running)
     {
@@ -247,36 +253,50 @@ int main(void)
 
         SDL_GetMouseState(&MOUSE_X, &MOUSE_Y);
 
+        v3_t cameraUp = {0, -1, 0};
+        v3_t cameraTarget = {0, 0, 1};
+        v3_t forward = v3_mul(cameraDir, speed);
+        v3_t strafe = v3_cross(forward, cameraUp);
+
         keyboardState = SDL_GetKeyboardState(NULL);
 
         if (keyboardState[SDL_SCANCODE_W])
         {
-            cameraPos.y -= 0.5f;
+            cameraPos = v3_add(cameraPos, forward);
         }
         if (keyboardState[SDL_SCANCODE_S])
         {
-            cameraPos.y += 0.5f;
+            cameraPos = v3_sub(cameraPos, forward);
         }
         if (keyboardState[SDL_SCANCODE_A])
         {
-            cameraPos.x -= 0.5f;
+            cameraPos = v3_sub(cameraPos, strafe);
         }
         if (keyboardState[SDL_SCANCODE_D])
         {
-            cameraPos.x += 0.5f;
+            cameraPos = v3_add(cameraPos, strafe);
         }
         if (keyboardState[SDL_SCANCODE_UP])
         {
-            cameraPos.z += 0.5f;
+            cameraPos = v3_add(cameraPos, cameraUp);
         }
         if (keyboardState[SDL_SCANCODE_DOWN])
         {
-            cameraPos.z -= 0.5f;
+            cameraPos = v3_sub(cameraPos, cameraUp);
+        }
+        if (keyboardState[SDL_SCANCODE_LEFT])
+        {
+            cameraYaw -= 0.05f;
+        }
+        if (keyboardState[SDL_SCANCODE_RIGHT])
+        {
+            cameraYaw += 0.05f;
         }
 
-        // rotX += 0.01;
-        // rotY += 0.01;
-        // rotZ += 0.01;
+        mat4_t matCameraRot = mat4_createRotY(cameraYaw);
+        cameraDir = mat4_transformV3(cameraTarget, matCameraRot);
+        mat4_t matCamera = mat4_createPointAt(cameraPos, v3_add(cameraPos, cameraDir), cameraUp);
+        mat4_t matView = mat4_createLookAt(matCamera);
 
         // render
         drawRect(&screen, 0, 0, screen.w, screen.h, createColor(0x00, 0x00, 0x00));
@@ -287,9 +307,11 @@ int main(void)
             depthBuffer[i] = 1;
         }
 
-        v3_t cameraTarget = v3_add(cameraPos, cameraDir);
-        mat4_t matCamera = mat4_createPointAt(cameraPos, cameraTarget, cameraUp);
-        mat4_t matView = mat4_createLookAt(matCamera);
+        // draw mesh
+
+        rotX += 0.01;
+        rotY += 0.01;
+        // rotZ += 0.01;
 
         v3_t rot = {rotX, rotY, rotZ};
         v3_t trans = {0, 0, 30};

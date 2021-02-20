@@ -5,8 +5,8 @@
 
 const int MAX_LINE_LEN = 64;
 const int MAX_TOKEN_LEN = 16;
-const int MAX_VERTS = 10000;
-const int MAX_TRIS = 10000;
+const int MAX_VERTS = 8192;
+const int MAX_TRIS = 8192;
 
 mesh_t mesh_load(char *path)
 {
