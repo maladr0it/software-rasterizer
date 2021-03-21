@@ -14,6 +14,7 @@ const int BYTES_PER_PX = 4;
 const float FOV = 60.0f * M_PI / 180.0f;
 const float Z_FAR = 100.0f;
 const float Z_NEAR = 0.1f;
+// const float Z_NEAR = 10.0f;
 
 const Uint8 *keyboardState;
 
@@ -76,50 +77,9 @@ float orient2d(v3_t a, v3_t b, v3_t c)
     return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 
-void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transform, mat4_t view)
+// rasterize tri from screenspace
+void rasterizeTri(videoBuffer_t *buffer, float *depthBuffer, tri_t projTri, Uint32 color)
 {
-    Uint32 color = WHITE;
-
-    tri_t transformedTri, projTri, viewedTri;
-
-    transformedTri.p[0] = mat4_transformV3(tri.p[0], transform);
-    transformedTri.p[1] = mat4_transformV3(tri.p[1], transform);
-    transformedTri.p[2] = mat4_transformV3(tri.p[2], transform);
-
-    // lighting
-    v3_t normal = tri_getNormal(transformedTri);
-    v3_t lightDir = {1, 0, 0};
-    lightDir = v3_normalize(lightDir);
-    float lightStrength = fMax(-1 * v3_dot(normal, lightDir), 0.0f);
-    float globalLight = 0.2f;
-    lightStrength = globalLight + lightStrength * (1.0f - globalLight);
-
-    // world space -> view space
-    viewedTri.p[0] = mat4_transformV3(transformedTri.p[0], view);
-    viewedTri.p[1] = mat4_transformV3(transformedTri.p[1], view);
-    viewedTri.p[2] = mat4_transformV3(transformedTri.p[2], view);
-
-    // viewedTri = transformedTri;
-
-    // view space -> screen space
-    projTri.p[0] = mat4_transformV3(viewedTri.p[0], MAT_PROJ);
-    projTri.p[1] = mat4_transformV3(viewedTri.p[1], MAT_PROJ);
-    projTri.p[2] = mat4_transformV3(viewedTri.p[2], MAT_PROJ);
-
-    projTri.p[0].x += 1.0f;
-    projTri.p[0].y += 1.0f;
-    projTri.p[1].x += 1.0f;
-    projTri.p[1].y += 1.0f;
-    projTri.p[2].x += 1.0f;
-    projTri.p[2].y += 1.0f;
-
-    projTri.p[0].x *= 0.5f * (float)buffer->w;
-    projTri.p[0].y *= 0.5f * (float)buffer->h;
-    projTri.p[1].x *= 0.5f * (float)buffer->w;
-    projTri.p[1].y *= 0.5f * (float)buffer->h;
-    projTri.p[2].x *= 0.5f * (float)buffer->w;
-    projTri.p[2].y *= 0.5f * (float)buffer->h;
-
     float minX = fMax(fMin3(projTri.p[0].x, projTri.p[1].x, projTri.p[2].x), 0);
     float maxX = fMin(fMax3(projTri.p[0].x, projTri.p[1].x, projTri.p[2].x), buffer->w);
     float minY = fMax(fMin3(projTri.p[0].y, projTri.p[1].y, projTri.p[2].y), 0);
@@ -161,11 +121,148 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
             if (depth < depthBuffer[y * buffer->w + x])
             {
                 depthBuffer[y * buffer->w + x] = depth;
-                Uint32 shaded = multiplyColor(color, lightStrength);
+                Uint32 shaded = color;
+                if (w0 / areax2 < 0.05 || w1 / areax2 < 0.05 || w2 / areax2 < 0.05)
+                {
+                    shaded = RED;
+                }
                 putPixel(buffer, x, y, shaded);
             }
         }
     }
+}
+
+void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transform, mat4_t view)
+{
+    Uint32 color = WHITE;
+
+    tri_t transformedTri;
+    transformedTri.p[0] = mat4_transformV3(tri.p[0], transform);
+    transformedTri.p[1] = mat4_transformV3(tri.p[1], transform);
+    transformedTri.p[2] = mat4_transformV3(tri.p[2], transform);
+
+    // lighting
+    v3_t normal = tri_getNormal(transformedTri);
+    v3_t lightDir = {1, 0, 0};
+    lightDir = v3_normalize(lightDir);
+    float lightStrength = fMax(-1 * v3_dot(normal, lightDir), 0.0f);
+    float globalLight = 0.2f;
+    lightStrength = globalLight + lightStrength * (1.0f - globalLight);
+
+    // world space -> view space
+    tri_t viewedTri;
+    viewedTri.p[0] = mat4_transformV3(transformedTri.p[0], view);
+    viewedTri.p[1] = mat4_transformV3(transformedTri.p[1], view);
+    viewedTri.p[2] = mat4_transformV3(transformedTri.p[2], view);
+
+    // clip viewed triangle against near plane
+    v3_t nearPlanePoint = {0, 0, Z_NEAR};
+    v3_t nearPlaneNormal = {0, 0, 1};
+    tri_t viewspaceClipped[2];
+    int nViewspaceClipped = tri_clipAgainstPlane(viewspaceClipped, nearPlanePoint, nearPlaneNormal, viewedTri);
+
+    for (int i = 0; i < nViewspaceClipped; i++)
+    {
+        tri_t projTri;
+        // view space -> screen space
+        projTri.p[0] = mat4_transformV3(viewspaceClipped[i].p[0], MAT_PROJ);
+        projTri.p[1] = mat4_transformV3(viewspaceClipped[i].p[1], MAT_PROJ);
+        projTri.p[2] = mat4_transformV3(viewspaceClipped[i].p[2], MAT_PROJ);
+
+        projTri.p[0].x += 1.0f;
+        projTri.p[0].y += 1.0f;
+        projTri.p[1].x += 1.0f;
+        projTri.p[1].y += 1.0f;
+        projTri.p[2].x += 1.0f;
+        projTri.p[2].y += 1.0f;
+
+        projTri.p[0].x *= 0.5f * (float)buffer->w;
+        projTri.p[0].y *= 0.5f * (float)buffer->h;
+        projTri.p[1].x *= 0.5f * (float)buffer->w;
+        projTri.p[1].y *= 0.5f * (float)buffer->h;
+        projTri.p[2].x *= 0.5f * (float)buffer->w;
+        projTri.p[2].y *= 0.5f * (float)buffer->h;
+
+        rasterizeTri(buffer, depthBuffer, projTri, multiplyColor(color, lightStrength));
+    }
+
+    //     // clip against screenspace edges
+    //     tri_t clippedTris[8];
+    //     clippedTris[0] = projTri;
+    //     int nClippedTris = 1;
+    //     tri_t newTris[8];
+    //     int nNewTris;
+
+    //     // clip top plane
+    //     v3_t screenTopPlanePoint = {0.0f, 0.0f, 0.0f};
+    //     v3_t screenTopPlaneNormal = {0.0f, 1.0f, 0.0f};
+    //     nNewTris = 0;
+    //     while (nClippedTris > 0)
+    //     {
+    //         tri_t tri = clippedTris[nClippedTris - 1];
+    //         nClippedTris--;
+    //         nNewTris += tri_clipAgainstPlane(newTris + nNewTris, screenTopPlanePoint, screenTopPlaneNormal, tri);
+    //     }
+    //     for (int i = 0; i < nNewTris; i++)
+    //     {
+    //         clippedTris[nClippedTris] = newTris[i];
+    //         nClippedTris++;
+    //     }
+
+    //     // clip bottom plane
+    //     v3_t screenBotPlanePoint = {0.0f, (float)buffer->h - 1.0f, 0.0f};
+    //     v3_t screenBotPlaneNormal = {0.0f, -1.0f, 0.0f};
+    //     nNewTris = 0;
+    //     while (nClippedTris > 0)
+    //     {
+    //         tri_t tri = clippedTris[nClippedTris - 1];
+    //         nClippedTris--;
+    //         nNewTris += tri_clipAgainstPlane(newTris + nNewTris, screenBotPlanePoint, screenBotPlaneNormal, tri);
+    //     }
+    //     for (int i = 0; i < nNewTris; i++)
+    //     {
+    //         clippedTris[nClippedTris] = newTris[i];
+    //         nClippedTris++;
+    //     }
+
+    //     // clip left plane
+    //     v3_t screenLeftPlanePoint = {0.0f, 0.0f, 0.0f};
+    //     v3_t screenLeftPlaneNormal = {1.0f, 0.0f, 0.0f};
+    //     nNewTris = 0;
+    //     while (nClippedTris > 0)
+    //     {
+    //         tri_t tri = clippedTris[nClippedTris - 1];
+    //         nClippedTris--;
+    //         nNewTris += tri_clipAgainstPlane(newTris + nNewTris, screenLeftPlanePoint, screenLeftPlaneNormal, tri);
+    //     }
+    //     for (int i = 0; i < nNewTris; i++)
+    //     {
+    //         clippedTris[nClippedTris] = newTris[i];
+    //         nClippedTris++;
+    //     }
+
+    //     // clip right plane
+    //     v3_t screenRightPlanePoint = {(float)buffer->w - 1.0f, 0.0f, 0.0f};
+    //     v3_t screenRightPlaneNormal = {-1.0f, 0.0f, 0.0f};
+    //     nNewTris = 0;
+    //     while (nClippedTris > 0)
+    //     {
+    //         tri_t tri = clippedTris[nClippedTris - 1];
+    //         nClippedTris--;
+    //         nNewTris += tri_clipAgainstPlane(newTris + nNewTris, screenRightPlanePoint, screenRightPlaneNormal, tri);
+    //     }
+
+    //     for (int i = 0; i < nNewTris; i++)
+    //     {
+    //         clippedTris[nClippedTris] = newTris[i];
+    //         nClippedTris++;
+    //     }
+
+    //     for (int i = 0; i < nClippedTris; i++)
+    //     {
+    //         rasterizeTri(buffer, depthBuffer, clippedTris[i], multiplyColor(color, lightStrength));
+    //     }
+    // }
 }
 
 void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans, mat4_t matView)
@@ -209,14 +306,13 @@ int main(void)
     screen.w = SCREEN_WIDTH;
     screen.h = SCREEN_HEIGHT;
     screen.pixels = malloc(sizeof(Uint32) * screen.w * screen.h);
-
     float *depthBuffer = malloc(sizeof(float) * screen.w * screen.h);
 
     MAT_PROJ = mat4_createProj((float)screen.w / (float)screen.h, FOV, Z_NEAR, Z_FAR);
 
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
 
-    mesh_t mesh = mesh_load("assets/teapot2.obj");
+    mesh_t mesh = mesh_load("assets/teapot.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
     RED = createColor(0xff, 0x00, 0x00);
@@ -228,15 +324,11 @@ int main(void)
     v3_t cameraPos = {0, 0, 0};
     v3_t cameraDir = {0, 0, 1};
 
-    // m4_t transformRotY = m4_createRotY(cameraYaw);
-
-    // cameraDir = v3_normalize(cameraDir);
-
     float rotX = 0;
     float rotY = 0;
     float rotZ = 0;
 
-    float speed = 0.5f;
+    float speed = 0.1f;
 
     while (running)
     {
@@ -309,12 +401,12 @@ int main(void)
 
         // draw mesh
 
-        rotX += 0.01;
-        rotY += 0.01;
+        // rotX += 0.01;
+        // rotY += 0.01;
         // rotZ += 0.01;
 
         v3_t rot = {rotX, rotY, rotZ};
-        v3_t trans = {0, 0, 30};
+        v3_t trans = {0, 0, 10};
         drawMesh(&screen, depthBuffer, mesh, rot, trans, matView);
 
         SDL_UpdateTexture(screenTexture, NULL, screen.pixels, BYTES_PER_PX * screen.w);

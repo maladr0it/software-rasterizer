@@ -10,4 +10,6 @@ typedef struct tri
 
 v3_t tri_getNormal(tri_t tri);
 
+int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_t inTri);
+
 #endif
