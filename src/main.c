@@ -156,7 +156,8 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
     viewedTri.p[2] = mat4_transformV3(transformedTri.p[2], view);
 
     // clip viewed triangle against near plane
-    v3_t nearPlanePoint = {0, 0, Z_NEAR};
+    // v3_t nearPlanePoint = {0, 0, Z_NEAR};
+    v3_t nearPlanePoint = {0, 0, 5.0f};
     v3_t nearPlaneNormal = {0, 0, 1};
     tri_t viewspaceClipped[2];
     int nViewspaceClipped = tri_clipAgainstPlane(viewspaceClipped, nearPlanePoint, nearPlaneNormal, viewedTri);
@@ -348,6 +349,7 @@ int main(void)
         v3_t cameraUp = {0, -1, 0};
         v3_t cameraTarget = {0, 0, 1};
         v3_t forward = v3_mul(cameraDir, speed);
+        v3_t upward = v3_mul(cameraUp, speed);
         v3_t strafe = v3_cross(forward, cameraUp);
 
         keyboardState = SDL_GetKeyboardState(NULL);
@@ -370,11 +372,11 @@ int main(void)
         }
         if (keyboardState[SDL_SCANCODE_UP])
         {
-            cameraPos = v3_add(cameraPos, cameraUp);
+            cameraPos = v3_add(cameraPos, upward);
         }
         if (keyboardState[SDL_SCANCODE_DOWN])
         {
-            cameraPos = v3_sub(cameraPos, cameraUp);
+            cameraPos = v3_sub(cameraPos, upward);
         }
         if (keyboardState[SDL_SCANCODE_LEFT])
         {
@@ -401,8 +403,8 @@ int main(void)
 
         // draw mesh
 
-        // rotX += 0.01;
-        // rotY += 0.01;
+        rotX += 0.01;
+        rotY += 0.03;
         // rotZ += 0.01;
 
         v3_t rot = {rotX, rotY, rotZ};

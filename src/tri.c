@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "tri.h"
 #include "console.h"
 
@@ -15,7 +16,8 @@ int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_
     int numInsidePoints = 0;
     int numOutsidePoints = 0;
 
-    if (v3_isInsideHalfspace(planePoint, planeNormal, inTri.p[0]))
+    bool p0Inside = v3_isInsideHalfspace(planePoint, planeNormal, inTri.p[0]);
+    if (p0Inside)
     {
         insidePoints[numInsidePoints] = inTri.p[0];
         numInsidePoints++;
@@ -26,7 +28,8 @@ int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_
         numOutsidePoints++;
     }
 
-    if (v3_isInsideHalfspace(planePoint, planeNormal, inTri.p[1]))
+    bool p1Inside = v3_isInsideHalfspace(planePoint, planeNormal, inTri.p[1]);
+    if (p1Inside)
     {
         insidePoints[numInsidePoints] = inTri.p[1];
         numInsidePoints++;
@@ -37,7 +40,8 @@ int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_
         numOutsidePoints++;
     }
 
-    if (v3_isInsideHalfspace(planePoint, planeNormal, inTri.p[2]))
+    bool p2Inside = v3_isInsideHalfspace(planePoint, planeNormal, inTri.p[2]);
+    if (p2Inside)
     {
         insidePoints[numInsidePoints] = inTri.p[2];
         numInsidePoints++;
@@ -55,21 +59,45 @@ int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_
 
     if (numInsidePoints == 1)
     {
-        outTris[0].p[0] = insidePoints[0];
-        outTris[0].p[1] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
-        outTris[0].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[1]);
+        if (!p1Inside)
+        {
+            outTris[0].p[0] = insidePoints[0];
+            outTris[0].p[1] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+            outTris[0].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[1]);
+        }
+        else
+        {
+            outTris[0].p[0] = insidePoints[0];
+            outTris[0].p[1] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[1]);
+            outTris[0].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+        }
+
         return 1;
     }
 
     if (numInsidePoints == 2)
     {
-        outTris[0].p[0] = insidePoints[0];
-        outTris[0].p[1] = insidePoints[1];
-        outTris[0].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+        if (!p1Inside)
+        {
+            outTris[0].p[0] = insidePoints[0];
+            outTris[0].p[1] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+            outTris[0].p[2] = insidePoints[1];
 
-        outTris[1].p[0] = insidePoints[1];
-        outTris[1].p[1] = outTris[0].p[2];
-        outTris[1].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[1], outsidePoints[0]);
+            outTris[1].p[0] = insidePoints[1];
+            outTris[1].p[1] = outTris[0].p[1];
+            outTris[1].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[1], outsidePoints[0]);
+        }
+        else
+        {
+            outTris[0].p[0] = insidePoints[0];
+            outTris[0].p[1] = insidePoints[1];
+            outTris[0].p[2] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+
+            outTris[1].p[0] = insidePoints[1];
+            outTris[1].p[1] = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[1], outsidePoints[0]);
+            outTris[1].p[2] = outTris[0].p[2];
+        }
+
         return 2;
     }
 
