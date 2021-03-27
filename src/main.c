@@ -19,7 +19,7 @@ const float Z_NEAR = 0.1f;
 
 const Uint8 *keyboardState;
 
-#define DEBUG 0
+#define DEBUG 1
 
 mat4_t MAT_PROJ;
 
@@ -143,6 +143,9 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
     transformedTri.p[0] = mat4_transformV3(tri.p[0], transform);
     transformedTri.p[1] = mat4_transformV3(tri.p[1], transform);
     transformedTri.p[2] = mat4_transformV3(tri.p[2], transform);
+    transformedTri.t[0] = tri.t[0];
+    transformedTri.t[1] = tri.t[1];
+    transformedTri.t[2] = tri.t[2];
 
     // lighting
     v3_t normal = tri_getNormal(transformedTri);
@@ -157,9 +160,12 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
     viewedTri.p[0] = mat4_transformV3(transformedTri.p[0], view);
     viewedTri.p[1] = mat4_transformV3(transformedTri.p[1], view);
     viewedTri.p[2] = mat4_transformV3(transformedTri.p[2], view);
+    viewedTri.t[0] = transformedTri.t[0];
+    viewedTri.t[1] = transformedTri.t[1];
+    viewedTri.t[2] = transformedTri.t[2];
 
     // clip viewed triangle against near plane
-    v3_t nearPlanePoint = {0, 0, Z_NEAR};
+    v3_t nearPlanePoint = {0, 0, Z_NEAR + 5};
     v3_t nearPlaneNormal = {0, 0, 1};
     tri_t clipped[2];
     // TODO: can do a simpler check and see how many points have z < Z_NEAR
@@ -240,10 +246,12 @@ int main(void)
 
     tri_t my_tri = testCubeTris[0];
 
-    mesh_t mesh = testCube;
+    // mesh_t mesh = testCube;
+    // mesh_t mesh = mesh_load("assets/tri.obj");
+    // mesh_t mesh = mesh_load("assets/square.obj");
     // mesh_t mesh = mesh_load("assets/cube.obj");
     // mesh_t mesh = mesh_load("assets/teapot.obj");
-    // mesh_t mesh = mesh_load("assets/mountains.obj");
+    mesh_t mesh = mesh_load("assets/mountains.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
     RED = createColor(0xff, 0x00, 0x00);
