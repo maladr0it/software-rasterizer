@@ -72,11 +72,13 @@ int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_
         outTris[0].p[0] = insidePoints[0];
         outTris[0].t[0] = insideTex[0];
 
-        outTris[0].p[1] = v3_getPlaneIntersect(&t, planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+        t = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+        outTris[0].p[1] = v3_interpolate(insidePoints[0], outsidePoints[0], t);
         outTris[0].t[1] = v2_interpolate(insideTex[0], outsideTex[0], t);
 
-        outTris[0].p[2] = v3_getPlaneIntersect(&t, planePoint, planeNormal, insidePoints[0], outsidePoints[1]);
-        outTris[0].t[2] = v2_interpolate(insideTex[0], insideTex[1], t);
+        t = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[1]);
+        outTris[0].p[2] = v3_interpolate(insidePoints[0], outsidePoints[1], t);
+        outTris[0].t[2] = v2_interpolate(insideTex[0], outsideTex[1], t);
 
         if (p1Inside)
         {
@@ -102,14 +104,16 @@ int tri_clipAgainstPlane(tri_t *outTris, v3_t planePoint, v3_t planeNormal, tri_
         outTris[0].p[1] = insidePoints[1];
         outTris[0].t[1] = insideTex[1];
 
-        outTris[0].p[2] = v3_getPlaneIntersect(&t, planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+        t = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[0], outsidePoints[0]);
+        outTris[0].p[2] = v3_interpolate(insidePoints[0], outsidePoints[0], t);
         outTris[0].t[2] = v2_interpolate(insideTex[0], outsideTex[0], t);
 
         // tri 2
         outTris[1].p[0] = insidePoints[1];
         outTris[1].t[0] = insideTex[1];
 
-        outTris[1].p[1] = v3_getPlaneIntersect(&t, planePoint, planeNormal, insidePoints[1], outsidePoints[0]);
+        t = v3_getPlaneIntersect(planePoint, planeNormal, insidePoints[1], outsidePoints[0]);
+        outTris[1].p[1] = v3_interpolate(insidePoints[1], outsidePoints[0], t);
         outTris[1].t[1] = v2_interpolate(insideTex[1], outsideTex[0], t);
 
         outTris[1].p[2] = outTris[0].p[2];

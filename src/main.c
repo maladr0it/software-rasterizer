@@ -10,6 +10,8 @@
 
 #include "testCube.h"
 
+#define DEBUG 0
+
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 const int BYTES_PER_PX = 4;
@@ -18,8 +20,6 @@ const float Z_FAR = 1000.0f;
 const float Z_NEAR = 0.1f;
 
 const Uint8 *keyboardState;
-
-#define DEBUG 1
 
 mat4_t MAT_PROJ;
 
@@ -149,7 +149,7 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
 
     // lighting
     v3_t normal = tri_getNormal(transformedTri);
-    v3_t lightDir = {0.5, 0.25, 1};
+    v3_t lightDir = {0, 0, 1};
     lightDir = v3_normalize(lightDir);
     float lightStrength = fMax(-1 * v3_dot(normal, lightDir), 0.0f);
     float globalLight = 0.2f;
@@ -165,15 +165,14 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
     viewedTri.t[2] = transformedTri.t[2];
 
     // clip viewed triangle against near plane
-    v3_t nearPlanePoint = {0, 0, Z_NEAR + 5};
+    v3_t nearPlanePoint = {0, 0, Z_NEAR};
     v3_t nearPlaneNormal = {0, 0, 1};
-    tri_t clipped[2];
-    // TODO: can do a simpler check and see how many points have z < Z_NEAR
-    int nClipped = tri_clipAgainstPlane(clipped, nearPlanePoint, nearPlaneNormal, viewedTri);
+    tri_t tris[2];
+    int numTris = tri_clipAgainstPlane(tris, nearPlanePoint, nearPlaneNormal, viewedTri);
 
-    for (int i = 0; i < nClipped; i++)
+    for (int i = 0; i < numTris; i++)
     {
-        tri_t tri = clipped[i];
+        tri_t tri = tris[i];
         tri_t projTri;
         // view space -> screen space
         projTri.p[0] = mat4_transformV3(tri.p[0], MAT_PROJ);
@@ -244,14 +243,12 @@ int main(void)
 
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
 
-    tri_t my_tri = testCubeTris[0];
-
-    // mesh_t mesh = testCube;
+    mesh_t mesh = testCube;
     // mesh_t mesh = mesh_load("assets/tri.obj");
     // mesh_t mesh = mesh_load("assets/square.obj");
     // mesh_t mesh = mesh_load("assets/cube.obj");
-    // mesh_t mesh = mesh_load("assets/teapot.obj");
-    mesh_t mesh = mesh_load("assets/mountains.obj");
+    // mesh_t mesh = mesh_load("assets/cube.obj");
+    // mesh_t mesh = mesh_load("assets/mountains.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
     RED = createColor(0xff, 0x00, 0x00);

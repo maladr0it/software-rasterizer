@@ -61,10 +61,14 @@ v3_t v3_normalize(v3_t a)
     return v3_div(a, v3_len(a));
 }
 
-v3_t v3_getPlaneIntersect(float *t, v3_t planePoint, v3_t planeNormal, v3_t p0, v3_t p1)
+v3_t v3_interpolate(v3_t from, v3_t to, float t)
 {
-    *t = v3_dot(v3_sub(p0, planePoint), planeNormal) / v3_dot(v3_sub(p0, p1), planeNormal);
-    return v3_add(p0, v3_mul(v3_sub(p1, p0), *t));
+    return v3_add(from, v3_mul(v3_sub(to, from), t));
+}
+
+float v3_getPlaneIntersect(v3_t planePoint, v3_t planeNormal, v3_t p0, v3_t p1)
+{
+    return v3_dot(v3_sub(p0, planePoint), planeNormal) / v3_dot(v3_sub(p0, p1), planeNormal);
 }
 
 bool v3_isInsideHalfspace(v3_t planePoint, v3_t planeNormal, v3_t point)

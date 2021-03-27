@@ -4,7 +4,6 @@
 #include "mesh.h"
 
 const int MAX_LINE_LEN = 64;
-const int MAX_TOKEN_LEN = 16;
 const int MAX_VERTS = 8192;
 const int MAX_TRIS = 8192;
 
@@ -19,11 +18,10 @@ mesh_t mesh_load(char *path)
     mesh_t mesh;
     mesh.tris = malloc(sizeof(tri_t) * MAX_TRIS);
     mesh.numTris = 0;
-    v3_t verts[MAX_VERTS];
+    v3_t *verts = malloc(sizeof(v3_t) * MAX_VERTS);
 
     int numVerts = 0;
     char line[MAX_LINE_LEN];
-    char token[MAX_TOKEN_LEN];
 
     while (fgets(line, MAX_LINE_LEN, file) != NULL)
     {
@@ -61,7 +59,7 @@ mesh_t mesh_load(char *path)
             break;
         }
     }
-
+    free(verts);
     return mesh;
 }
 
