@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "utils.h"
 #include "mesh.h"
 
 const int MAX_LINE_LEN = 64;
@@ -16,9 +16,9 @@ mesh_t mesh_load(char *path)
     }
 
     mesh_t mesh;
-    mesh.tris = malloc(sizeof(tri_t) * MAX_TRIS);
+    mesh.tris = safeMalloc(sizeof(tri_t) * MAX_TRIS);
     mesh.numTris = 0;
-    v3_t *verts = malloc(sizeof(v3_t) * MAX_VERTS);
+    v3_t *verts = safeMalloc(sizeof(v3_t) * MAX_VERTS);
 
     int numVerts = 0;
     char line[MAX_LINE_LEN];

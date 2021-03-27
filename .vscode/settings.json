@@ -17,7 +17,9 @@
 		"main.h": "c",
 		"ios": "c",
 		"stdlib.h": "c",
-		"v3.h": "c"
+		"v3.h": "c",
+		"utils.h": "c",
+		"pixelbuffer.h": "c"
 	},
 	"editor.tabSize": 4
 }

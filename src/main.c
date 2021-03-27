@@ -5,6 +5,7 @@
 #include "mat4.h"
 #include "tri.h"
 #include "mesh.h"
+#include "pixelBuffer.h"
 #include "utils.h"
 #include "console.h"
 
@@ -26,37 +27,30 @@ mat4_t MAT_PROJ;
 int MOUSE_X;
 int MOUSE_Y;
 
-Uint32 WHITE;
-Uint32 RED;
-Uint32 GREEN;
-Uint32 BLUE;
+uint32_t WHITE;
+uint32_t RED;
+uint32_t GREEN;
+uint32_t BLUE;
 
-typedef struct videoBuffer
+uint32_t createColor(uint8_t r, uint8_t g, uint8_t b)
 {
-    int w;
-    int h;
-    Uint32 *pixels;
-} videoBuffer_t;
-
-Uint32 createColor(Uint8 r, Uint8 g, Uint8 b)
-{
-    return ((Uint32)r << 24) + ((Uint32)g << 16) + ((Uint32)b << 8) + 0xff;
+    return ((uint32_t)r << 24) + ((uint32_t)g << 16) + ((uint32_t)b << 8) + 0xff;
 };
 
-Uint32 multiplyColor(Uint32 color, float factor)
+uint32_t multiplyColor(uint32_t color, float factor)
 {
-    Uint8 r = (Uint8)(color >> 24) * factor;
-    Uint8 g = (Uint8)(color >> 16) * factor;
-    Uint8 b = (Uint8)(color >> 8) * factor;
+    uint8_t r = (uint8_t)(color >> 24) * factor;
+    uint8_t g = (uint8_t)(color >> 16) * factor;
+    uint8_t b = (uint8_t)(color >> 8) * factor;
     return createColor(r, g, b);
 }
 
-void putPixel(videoBuffer_t *buffer, int x0, int y0, Uint32 color)
+void putPixel(pixelBuffer_video_t *buffer, int x0, int y0, uint32_t color)
 {
     buffer->pixels[y0 * buffer->w + x0] = color;
 }
 
-void drawRect(videoBuffer_t *buffer, int x0, int y0, int w, int h, Uint32 color)
+void drawRect(pixelBuffer_video_t *buffer, int x0, int y0, int w, int h, uint32_t color)
 {
     int x_start = x0 < 0 ? 0 : x0;
     int x_end = x0 + w > buffer->w ? buffer->w : x0 + w;
@@ -79,7 +73,7 @@ float orient2d(v3_t a, v3_t b, v3_t c)
 }
 
 // rasterize tri from screenspace
-void rasterizeTri(videoBuffer_t *buffer, float *depthBuffer, tri_t projTri, Uint32 color)
+void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_t projTri, Uint32 color)
 {
     float minX = fMax(fMin3(projTri.p[0].x, projTri.p[1].x, projTri.p[2].x), 0);
     float maxX = fMin(fMax3(projTri.p[0].x, projTri.p[1].x, projTri.p[2].x), buffer->w);
@@ -119,10 +113,10 @@ void rasterizeTri(videoBuffer_t *buffer, float *depthBuffer, tri_t projTri, Uint
             }
 #endif
 
-            if (depth < depthBuffer[y * buffer->w + x])
+            if (depth < depthBuffer->pixels[y * depthBuffer->w + x])
             {
-                depthBuffer[y * buffer->w + x] = depth;
-                Uint32 shaded = color;
+                depthBuffer->pixels[y * depthBuffer->w + x] = depth;
+                uint32_t shaded = color;
 #if DEBUG
                 if (w0 / areax2 < 0.05 || w1 / areax2 < 0.05 || w2 / areax2 < 0.05)
                 {
@@ -135,9 +129,9 @@ void rasterizeTri(videoBuffer_t *buffer, float *depthBuffer, tri_t projTri, Uint
     }
 }
 
-void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transform, mat4_t view)
+void drawTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_t tri, mat4_t transform, mat4_t view)
 {
-    Uint32 color = WHITE;
+    uint32_t color = WHITE;
 
     tri_t transformedTri;
     transformedTri.p[0] = mat4_transformV3(tri.p[0], transform);
@@ -197,7 +191,7 @@ void drawTri(videoBuffer_t *buffer, float *depthBuffer, tri_t tri, mat4_t transf
     }
 }
 
-void drawMesh(videoBuffer_t *buffer, float *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans, mat4_t matView)
+void drawMesh(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, mesh_t mesh, v3_t rot, v3_t trans, mat4_t matView)
 {
     mat4_t matWorld = mat4_createIdentity();
     matWorld = mat4_mul(matWorld, mat4_createRotX(rot.x));
@@ -231,23 +225,24 @@ int main(void)
     }
     console_init(renderer, SCREEN_WIDTH);
 
-    SDL_Event e;
+    pixelBuffer_video_t screen = pixelBuffer_video_create(SCREEN_WIDTH, SCREEN_HEIGHT);
+    pixelBuffer_depth_t depthBuffer = pixelBuffer_depth_create(screen.w, screen.h);
 
-    videoBuffer_t screen;
-    screen.w = SCREEN_WIDTH;
-    screen.h = SCREEN_HEIGHT;
-    screen.pixels = malloc(sizeof(Uint32) * screen.w * screen.h);
-    float *depthBuffer = malloc(sizeof(float) * screen.w * screen.h);
+    SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
+    if (screenTexture == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    SDL_Event e;
 
     MAT_PROJ = mat4_createProj((float)screen.w / (float)screen.h, FOV, Z_NEAR, Z_FAR);
 
-    SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
-
-    mesh_t mesh = testCube;
+    // mesh_t mesh = testCube;
     // mesh_t mesh = mesh_load("assets/tri.obj");
     // mesh_t mesh = mesh_load("assets/square.obj");
     // mesh_t mesh = mesh_load("assets/cube.obj");
-    // mesh_t mesh = mesh_load("assets/cube.obj");
+    mesh_t mesh = mesh_load("assets/teapot.obj");
     // mesh_t mesh = mesh_load("assets/mountains.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
@@ -266,9 +261,33 @@ int main(void)
 
     float speed = 0.1f;
 
+    const int numFrameSamples = 60;
+    uint32_t lastFrameAt = 0;
+    int frameNum = 0;
+    float fps = 0;
+    uint32_t frameTimes[numFrameSamples];
+
     while (running)
     {
+        // measure perf
+        uint32_t now = SDL_GetTicks();
+        uint32_t frameTime = now - lastFrameAt;
+        lastFrameAt = SDL_GetTicks();
+
+        frameTimes[frameNum % numFrameSamples] = frameTime;
+        if (frameNum % numFrameSamples == numFrameSamples - 1)
+        {
+            uint32_t sum = 0;
+            for (int i = 0; i < numFrameSamples; ++i)
+            {
+                sum += frameTimes[i];
+            }
+            fps = 1000.0f / ((float)sum / (float)numFrameSamples);
+        }
+        frameNum++;
+
         console_clear();
+        console_log("fps: %f", fps);
 
         // handle inputs
 
@@ -332,18 +351,18 @@ int main(void)
 
         drawRect(&screen, 0, 0, screen.w, screen.h, createColor(0x00, 0x00, 0x00));
 
-        for (int i = 0; i < screen.w * screen.h; i++)
+        for (int i = 0; i < depthBuffer.w * depthBuffer.h; i++)
         {
-            depthBuffer[i] = 1;
+            depthBuffer.pixels[i] = 1.0f;
         }
 
         // rotX += 0.01;
-        // rotY += 0.01;
+        rotY += 0.01;
         // rotZ += 0.01;
 
         v3_t rot = {rotX, rotY, rotZ};
         v3_t trans = {0, 0, 10};
-        drawMesh(&screen, depthBuffer, mesh, rot, trans, matView);
+        drawMesh(&screen, &depthBuffer, mesh, rot, trans, matView);
 
         SDL_UpdateTexture(screenTexture, NULL, screen.pixels, BYTES_PER_PX * screen.w);
         SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
