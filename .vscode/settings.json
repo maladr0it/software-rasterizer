@@ -16,7 +16,8 @@
 		"__locale": "c",
 		"main.h": "c",
 		"ios": "c",
-		"stdlib.h": "c"
+		"stdlib.h": "c",
+		"v3.h": "c"
 	},
 	"editor.tabSize": 4
 }
