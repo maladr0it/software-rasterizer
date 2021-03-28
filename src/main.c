@@ -14,8 +14,10 @@
 
 #define DEBUG 0
 
-const int SCREEN_WIDTH = 1024;
-const int SCREEN_HEIGHT = 768;
+const int SCREEN_WIDTH = 512;
+const int SCREEN_HEIGHT = 512;
+const int SCENE_WIDTH = 256;
+const int SCENE_HEIGHT = 256;
 const int BYTES_PER_PX = 4;
 const float FOV = 60.0f * M_PI / 180.0f;
 const float Z_FAR = 1000.0f;
@@ -248,7 +250,7 @@ int main(void)
     }
     console_init(renderer, SCREEN_WIDTH);
 
-    pixelBuffer_video_t screen = pixelBuffer_video_create(SCREEN_WIDTH, SCREEN_HEIGHT);
+    pixelBuffer_video_t screen = pixelBuffer_video_create(SCENE_WIDTH, SCENE_HEIGHT);
     pixelBuffer_depth_t depthBuffer = pixelBuffer_depth_create(screen.w, screen.h);
 
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screen.w, screen.h);
