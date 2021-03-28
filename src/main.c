@@ -6,10 +6,11 @@
 #include "tri.h"
 #include "mesh.h"
 #include "pixelBuffer.h"
+#include "texture.h"
 #include "utils.h"
 #include "console.h"
 
-#include "testCube.h"
+#include "testShapes.h"
 
 #define DEBUG 0
 
@@ -31,6 +32,8 @@ uint32_t WHITE;
 uint32_t RED;
 uint32_t GREEN;
 uint32_t BLUE;
+
+pixelBuffer_video_t wallTexture;
 
 uint32_t createColor(uint8_t r, uint8_t g, uint8_t b)
 {
@@ -73,7 +76,7 @@ float orient2d(v3_t a, v3_t b, v3_t c)
 }
 
 // rasterize tri from screenspace
-void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_t projTri, Uint32 color)
+void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_t projTri, float lightStrength, float p0w, float p1w, float p2w)
 {
     float minX = fMax(fMin3(projTri.p[0].x, projTri.p[1].x, projTri.p[2].x), 0);
     float maxX = fMin(fMax3(projTri.p[0].x, projTri.p[1].x, projTri.p[2].x), buffer->w);
@@ -92,16 +95,16 @@ void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer,
         for (int x = minX; x < maxX; x++)
         {
             v3_t p = {x, y, 0};
-            float w0 = orient2d(projTri.p[0], p, projTri.p[1]);
-            float w1 = orient2d(projTri.p[1], p, projTri.p[2]);
-            float w2 = areax2 - w0 - w1;
+            float w0 = orient2d(projTri.p[0], p, projTri.p[1]) / areax2;
+            float w1 = orient2d(projTri.p[1], p, projTri.p[2]) / areax2;
+            float w2 = 1 - w0 - w1;
 
             if (w0 < 0 || w1 < 0 || w2 < 0)
             {
                 continue;
             }
 
-            double depth = (w0 * projTri.p[2].z + w1 * projTri.p[0].z + w2 * projTri.p[1].z) / areax2;
+            double depth = (w0 * projTri.p[2].z + w1 * projTri.p[0].z + w2 * projTri.p[1].z);
 #if DEBUG
             if (x == MOUSE_X && y == MOUSE_Y)
             {
@@ -116,9 +119,18 @@ void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer,
             if (depth < depthBuffer->pixels[y * depthBuffer->w + x])
             {
                 depthBuffer->pixels[y * depthBuffer->w + x] = depth;
-                uint32_t shaded = color;
+
+                float w = w0 * (1.0f / p2w) + w1 * (1.0f / p0w) + w2 * (1.0f / p1w);
+                float u = w0 * (projTri.t[2].u / p2w) + w1 * (projTri.t[0].u / p0w) + w2 * (projTri.t[1].u / p1w);
+                float v = w0 * (projTri.t[2].v / p2w) + w1 * (projTri.t[0].v / p0w) + w2 * (projTri.t[1].v / p1w);
+
+                u /= w;
+                v /= w;
+
+                uint32_t color = texture_get(wallTexture, u, v);
+                uint32_t shaded = multiplyColor(color, lightStrength);
 #if DEBUG
-                if (w0 / areax2 < 0.05 || w1 / areax2 < 0.05 || w2 / areax2 < 0.05)
+                if (w0 < 0.05 || w1 < 0.05 || w2 < 0.05)
                 {
                     shaded = RED;
                 }
@@ -131,8 +143,6 @@ void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer,
 
 void drawTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_t tri, mat4_t transform, mat4_t view)
 {
-    uint32_t color = WHITE;
-
     tri_t transformedTri;
     transformedTri.p[0] = mat4_transformV3(tri.p[0], transform);
     transformedTri.p[1] = mat4_transformV3(tri.p[1], transform);
@@ -166,12 +176,25 @@ void drawTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_
 
     for (int i = 0; i < numTris; i++)
     {
+        // view space -> screen space
+
         tri_t tri = tris[i];
         tri_t projTri;
-        // view space -> screen space
-        projTri.p[0] = mat4_transformV3(tri.p[0], MAT_PROJ);
-        projTri.p[1] = mat4_transformV3(tri.p[1], MAT_PROJ);
-        projTri.p[2] = mat4_transformV3(tri.p[2], MAT_PROJ);
+
+        float p0w;
+        projTri.p[0] = mat4_transformV3Proj(&p0w, tri.p[0], MAT_PROJ);
+        projTri.p[0] = v3_div(projTri.p[0], p0w);
+        projTri.t[0] = tri.t[0];
+
+        float p1w;
+        projTri.p[1] = mat4_transformV3Proj(&p1w, tri.p[1], MAT_PROJ);
+        projTri.p[1] = v3_div(projTri.p[1], p1w);
+        projTri.t[1] = tri.t[1];
+
+        float p2w;
+        projTri.p[2] = mat4_transformV3Proj(&p2w, tri.p[2], MAT_PROJ);
+        projTri.p[2] = v3_div(projTri.p[2], p2w);
+        projTri.t[2] = tri.t[2];
 
         projTri.p[0].x += 1.0f;
         projTri.p[0].y += 1.0f;
@@ -187,7 +210,7 @@ void drawTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer, tri_
         projTri.p[2].x *= 0.5f * (float)buffer->w;
         projTri.p[2].y *= 0.5f * (float)buffer->h;
 
-        rasterizeTri(buffer, depthBuffer, projTri, multiplyColor(color, lightStrength));
+        rasterizeTri(buffer, depthBuffer, projTri, lightStrength, p0w, p1w, p2w);
     }
 }
 
@@ -234,15 +257,17 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+    wallTexture = texture_load("assets/wall_texture.bmp");
+
     SDL_Event e;
 
     MAT_PROJ = mat4_createProj((float)screen.w / (float)screen.h, FOV, Z_NEAR, Z_FAR);
 
-    // mesh_t mesh = testCube;
+    mesh_t mesh = testShapes_cube;
     // mesh_t mesh = mesh_load("assets/tri.obj");
     // mesh_t mesh = mesh_load("assets/square.obj");
     // mesh_t mesh = mesh_load("assets/cube.obj");
-    mesh_t mesh = mesh_load("assets/teapot.obj");
+    // mesh_t mesh = mesh_load("assets/teapot.obj");
     // mesh_t mesh = mesh_load("assets/mountains.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
@@ -270,11 +295,11 @@ int main(void)
     while (running)
     {
         // measure perf
+
         uint32_t now = SDL_GetTicks();
         uint32_t frameTime = now - lastFrameAt;
-        lastFrameAt = SDL_GetTicks();
-
         frameTimes[frameNum % numFrameSamples] = frameTime;
+
         if (frameNum % numFrameSamples == numFrameSamples - 1)
         {
             uint32_t sum = 0;
@@ -284,6 +309,7 @@ int main(void)
             }
             fps = 1000.0f / ((float)sum / (float)numFrameSamples);
         }
+        lastFrameAt = now;
         frameNum++;
 
         console_clear();
@@ -356,7 +382,7 @@ int main(void)
             depthBuffer.pixels[i] = 1.0f;
         }
 
-        // rotX += 0.01;
+        rotX += 0.007;
         rotY += 0.01;
         // rotZ += 0.01;
 

@@ -242,23 +242,24 @@ mat4_t mat4_createLookAt(mat4_t pointAt)
     return result;
 }
 
+// assumes w is 1.0
 v3_t mat4_transformV3(v3_t in, mat4_t mat)
 {
     v3_t result;
-
     result.x = in.x * mat.m[0][0] + in.y * mat.m[1][0] + in.z * mat.m[2][0] + mat.m[3][0];
     result.y = in.x * mat.m[0][1] + in.y * mat.m[1][1] + in.z * mat.m[2][1] + mat.m[3][1];
     result.z = in.x * mat.m[0][2] + in.y * mat.m[1][2] + in.z * mat.m[2][2] + mat.m[3][2];
-    float w = in.x * mat.m[0][3] + in.y * mat.m[1][3] + in.z * mat.m[2][3] + mat.m[3][3];
+    return result;
+}
 
-    if (w == 0)
-    {
-        exit(EXIT_FAILURE);
-    }
-
-    result.x /= w;
-    result.y /= w;
-    result.z /= w;
+// returns w
+v3_t mat4_transformV3Proj(float *w, v3_t in, mat4_t mat)
+{
+    v3_t result;
+    result.x = in.x * mat.m[0][0] + in.y * mat.m[1][0] + in.z * mat.m[2][0] + mat.m[3][0];
+    result.y = in.x * mat.m[0][1] + in.y * mat.m[1][1] + in.z * mat.m[2][1] + mat.m[3][1];
+    result.z = in.x * mat.m[0][2] + in.y * mat.m[1][2] + in.z * mat.m[2][2] + mat.m[3][2];
+    *w = in.x * mat.m[0][3] + in.y * mat.m[1][3] + in.z * mat.m[2][3] + mat.m[3][3];
 
     return result;
 }

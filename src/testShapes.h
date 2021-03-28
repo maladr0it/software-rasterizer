@@ -1,9 +1,7 @@
-#ifndef TESTCUBE_H
-#define TESTCUBE_H
+#ifndef TESTSHAPES_H
+#define TESTSHAPES_H
 
 #include "mesh.h"
-
-const int NUM_TRIS = 12;
 
 // clang-format off
 #define P_A {-1.0f, -1.0f, -1.0f}
@@ -21,7 +19,7 @@ const int NUM_TRIS = 12;
 #define T_D {1.0f, 0.0f}
 // clang-format on
 
-tri_t testCubeTris[] = {
+tri_t testShapes_cubeTris[] = {
     // front
     {.p = {P_A, P_B, P_D}, .t = {T_A, T_B, T_D}},
     {.p = {P_D, P_B, P_C}, .t = {T_D, T_B, T_C}},
@@ -47,9 +45,19 @@ tri_t testCubeTris[] = {
     {.p = {P_C, P_F, P_G}, .t = {T_D, T_B, T_C}},
 };
 
-mesh_t testCube = {
-    .numTris = NUM_TRIS,
-    .tris = testCubeTris,
+mesh_t testShapes_cube = {
+    .numTris = 12,
+    .tris = testShapes_cubeTris,
+};
+
+tri_t testShapes_squareTris[] = {
+    {.p = {P_A, P_B, P_D}, .t = {T_A, T_B, T_D}},
+    {.p = {P_D, P_B, P_C}, .t = {T_D, T_B, T_C}},
+};
+
+mesh_t testShapes_square = {
+    .numTris = 1,
+    .tris = testShapes_squareTris,
 };
 
 #endif

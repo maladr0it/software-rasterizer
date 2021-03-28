@@ -24,6 +24,14 @@ v2_t v2_mul(v2_t a, float b)
     return result;
 }
 
+v2_t v2_div(v2_t a, float b)
+{
+    v2_t result;
+    result.u = a.u / b;
+    result.v = a.v / b;
+    return result;
+}
+
 v2_t v2_interpolate(v2_t from, v2_t to, float t)
 {
     return v2_add(from, v2_mul(v2_sub(to, from), t));

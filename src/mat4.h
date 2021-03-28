@@ -28,4 +28,6 @@ mat4_t mat4_createLookAt(mat4_t pointAt);
 
 v3_t mat4_transformV3(v3_t in, mat4_t mat);
 
+v3_t mat4_transformV3Proj(float *w, v3_t in, mat4_t mat);
+
 #endif

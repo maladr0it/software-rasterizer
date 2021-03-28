@@ -11,6 +11,6 @@ typedef struct mesh
 
 mesh_t mesh_load(char *path);
 
-void mesh_unload(mesh_t *mesh);
+void mesh_destroy(mesh_t *mesh);
 
 #endif
