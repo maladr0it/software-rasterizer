@@ -129,7 +129,8 @@ void rasterizeTri(pixelBuffer_video_t *buffer, pixelBuffer_depth_t *depthBuffer,
                 u /= w;
                 v /= w;
 
-                uint32_t color = texture_get(wallTexture, u, v);
+                // uint32_t color = texture_get(wallTexture, u, v);
+                uint32_t color = WHITE;
                 uint32_t shaded = multiplyColor(color, lightStrength);
 #if DEBUG
                 if (w0 < 0.05 || w1 < 0.05 || w2 < 0.05)
@@ -265,11 +266,11 @@ int main(void)
 
     MAT_PROJ = mat4_createProj((float)screen.w / (float)screen.h, FOV, Z_NEAR, Z_FAR);
 
-    mesh_t mesh = testShapes_cube;
+    // mesh_t mesh = testShapes_cube;
     // mesh_t mesh = mesh_load("assets/tri.obj");
     // mesh_t mesh = mesh_load("assets/square.obj");
     // mesh_t mesh = mesh_load("assets/cube.obj");
-    // mesh_t mesh = mesh_load("assets/teapot.obj");
+    mesh_t mesh = mesh_load("assets/teapot.obj");
     // mesh_t mesh = mesh_load("assets/mountains.obj");
 
     WHITE = createColor(0xff, 0xff, 0xff);
@@ -384,7 +385,7 @@ int main(void)
             depthBuffer.pixels[i] = 1.0f;
         }
 
-        rotX += 0.007;
+        // rotX += 0.007;
         rotY += 0.01;
         // rotZ += 0.01;
 
